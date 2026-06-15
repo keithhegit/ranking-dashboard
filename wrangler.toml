@@ -16,7 +16,7 @@ crons = ["0 16 * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "competitor-monitor-dashboard"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "be38c2d0-f596-46ba-8aee-22c324826f63"
 migrations_dir = "migrations"
 
 [[r2_buckets]]
