@@ -39,6 +39,6 @@ $payload = @{
 
 $endpoint = $WorkerUrl.TrimEnd("/") + "/api/ingest"
 $response = Invoke-RestMethod -Method Post -Uri $endpoint -ContentType "application/json; charset=utf-8" `
-    -Headers @{ Authorization = "Bearer $IngestToken" } -Body $payload
+    -Headers @{ Authorization = "Bearer $IngestToken"; "User-Agent" = "ranking-dashboard-runner/1.0" } -Body $payload
 
 $response | ConvertTo-Json -Depth 8

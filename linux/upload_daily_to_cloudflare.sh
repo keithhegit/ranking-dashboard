@@ -50,6 +50,7 @@ request = urllib.request.Request(
     headers={
         "content-type": "application/json; charset=utf-8",
         "authorization": f"Bearer {token}",
+        "user-agent": "ranking-dashboard-runner/1.0",
     },
 )
 with urllib.request.urlopen(request, timeout=120) as response:
