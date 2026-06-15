@@ -19,10 +19,10 @@ chmod +x linux/*.sh
 APP_USER="$USER" ./linux/install_ubuntu.sh
 ```
 
-The installer assumes it is run from this repository. If your server should run on another timezone, pass:
+The installer assumes it is run from this repository. If your server should use another schedule, pass a systemd calendar expression:
 
 ```bash
-TIMER_TIMEZONE=UTC APP_USER="$USER" ./linux/install_ubuntu.sh
+TIMER_CALENDAR="*-*-* 16:00:00 UTC" APP_USER="$USER" ./linux/install_ubuntu.sh
 ```
 
 ## First Login

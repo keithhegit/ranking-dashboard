@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 APP_USER="${APP_USER:-$USER}"
 APP_DIR="${APP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-TIMER_TIMEZONE="${TIMER_TIMEZONE:-Asia/Shanghai}"
+TIMER_CALENDAR="${TIMER_CALENDAR:-*-*-* 00:00:00 Asia/Shanghai}"
 
 if [[ "$(id -u)" -eq 0 && "$APP_USER" == "root" ]]; then
   echo "Do not run the runner as root. Set APP_USER to a normal user." >&2
@@ -78,7 +78,7 @@ sudo tee /etc/systemd/system/competitor-monitor.timer >/dev/null <<EOF
 Description=Run competitor monitor daily at 00:00
 
 [Timer]
-OnCalendar=$TIMER_TIMEZONE *-*-* 00:00:00
+OnCalendar=$TIMER_CALENDAR
 Persistent=true
 Unit=competitor-monitor.service
 
