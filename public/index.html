@@ -34,7 +34,7 @@
     th, td { border: 1px solid var(--line); padding: 9px 10px; text-align: left; font-size: 13px; white-space: nowrap; }
     th { background: #f0f4fa; }
     .rank { font-weight: 800; }
-    .SUCCESS { color: var(--good); font-weight: 700; }
+    .SUCCESS, .PARTIAL_SUCCESS { color: var(--good); font-weight: 700; }
     .PENDING_TODAY, .NO_DATA_SOURCE { color: var(--warn); font-weight: 700; }
     .FAILED, .RANK_CAPTURE_FAILED, .RATE_LIMITED { color: var(--bad); font-weight: 700; }
     .empty { padding: 32px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; background: #fbfdff; }
@@ -94,10 +94,11 @@
     }[ch]));
     const safeStatusClass = value => {
       const normalized = String(value || "").toUpperCase();
-      return /^(SUCCESS|PENDING_TODAY|NO_DATA_SOURCE|FAILED|RANK_CAPTURE_FAILED|RATE_LIMITED)$/.test(normalized) ? normalized : "FAILED";
+      return /^(SUCCESS|PARTIAL_SUCCESS|PENDING_TODAY|NO_DATA_SOURCE|FAILED|RANK_CAPTURE_FAILED|RATE_LIMITED)$/.test(normalized) ? normalized : "FAILED";
     };
     const statusLabel = value => ({
       SUCCESS: "成功",
+      PARTIAL_SUCCESS: "部分成功",
       PENDING_TODAY: "待更新",
       NO_DATA_SOURCE: "未配置数据源",
       FAILED: "失败",

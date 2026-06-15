@@ -150,7 +150,7 @@ async function handleIngest(request, env, ctx) {
 }
 
 async function ingestPayload(env, payload) {
-  const date = String(payload.date).slice(0, 10);
+  const date = normalizeDateString(payload.date);
   const source = String(payload.source || 'unknown');
   const rows = payload.rows.map((row) => normalizeIngestRow(row, date, source)).filter(Boolean);
   const snapshotKey = env.SNAPSHOTS ? `snapshots/${date}/${Date.now()}.json` : null;
@@ -264,6 +264,14 @@ function normalizeRank(value) {
 
   const rank = Number(value);
   return Number.isFinite(rank) ? rank : null;
+}
+
+function normalizeDateString(value) {
+  const date = String(value ?? '').trim();
+  if (/^\d{8}$/.test(date)) {
+    return `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`;
+  }
+  return date.slice(0, 10);
 }
 
 async function recordRun(db, run) {

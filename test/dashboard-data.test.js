@@ -123,6 +123,46 @@ test('buildDashboardPayload uses updated run timestamp for last run status', () 
   assert.equal(payload.overview.last_run_status, 'FAILED');
 });
 
+test('buildDashboardPayload normalizes compact YYYYMMDD dates', () => {
+  const payload = buildDashboardPayload(
+    [
+      {
+        date: '20260615',
+        brand: 'ugphone',
+        country: 'US',
+        status: 'SUCCESS',
+        revenue_rank_tools: '385',
+      },
+    ],
+    [{ date: '20260615', status: 'COMPLETED' }],
+    '2026-06-15T10:00:00.000Z',
+  );
+
+  assert.equal(payload.latest_monitor_file_date, '2026-06-15');
+  assert.equal(payload.overview.latest_monitor_date, '2026-06-15');
+  assert.equal(payload.latest_rows.find((row) => row.brand === 'ugphone' && row.country === 'US').date, '2026-06-15');
+});
+
+test('buildDashboardPayload counts partial success with a rank as successful coverage', () => {
+  const payload = buildDashboardPayload(
+    [
+      {
+        date: '2026-06-15',
+        brand: 'ugphone',
+        country: 'US',
+        status: 'PARTIAL_SUCCESS',
+        revenue_rank_tools: '385',
+      },
+    ],
+    [{ date: '2026-06-15', status: 'COMPLETED' }],
+    '2026-06-15T10:00:00.000Z',
+  );
+
+  assert.equal(payload.overview.success_count, 1);
+  assert.equal(payload.overview.failed_count, 0);
+  assert.equal(payload.latest_rows.find((row) => row.brand === 'ugphone' && row.country === 'US').status, 'PARTIAL_SUCCESS');
+});
+
 test('ingest rejects requests when INGEST_TOKEN is not configured', async () => {
   const db = new FakeDb();
   const response = await worker.fetch(ingestRequest(), { DB: db }, { waitUntil() {} });
@@ -189,6 +229,24 @@ test('ingest writes optional CSV detail fields to D1 ranking rows', async () => 
   ]);
 });
 
+test('ingest normalizes compact YYYYMMDD dates before writing D1 rows', async () => {
+  const db = new FakeDb();
+  const response = await worker.fetch(
+    ingestRequest('secret', '20260615'),
+    { DB: db, INGEST_TOKEN: 'secret' },
+    { waitUntil() {} },
+  );
+
+  assert.equal(response.status, 200);
+
+  const rankingInsert = db.runs.find((run) => run.sql.includes('INSERT INTO ranking_rows'));
+  assert.equal(rankingInsert.values[0], '2026-06-15');
+
+  const runUpsert = db.runs.find((run) => run.sql.includes('INSERT INTO update_runs'));
+  assert.equal(runUpsert.values[0], '2026-06-15:csv_upload:COMPLETED');
+  assert.equal(runUpsert.values[1], '2026-06-15');
+});
+
 test('ingest ignores rows outside configured products and countries', async () => {
   const db = new FakeDb();
   const response = await worker.fetch(
@@ -213,7 +271,7 @@ test('ingest ignores rows outside configured products and countries', async () =
   assert.equal(db.runs.filter((run) => run.sql.includes('INSERT INTO ranking_rows')).length, 0);
 });
 
-function ingestRequest(token) {
+function ingestRequest(token, date = '2026-06-15') {
   const headers = { 'content-type': 'application/json' };
   if (token) {
     headers.authorization = `Bearer ${token}`;
@@ -223,7 +281,7 @@ function ingestRequest(token) {
     method: 'POST',
     headers,
     body: JSON.stringify({
-      date: '2026-06-15',
+      date,
       source: 'csv_upload',
       rows: [
         {

@@ -32,9 +32,9 @@ export function buildDashboardPayload(rows = [], runs = [], nowIso = new Date().
 
   const lastRun = latestRun(runs.map(normalizeRun));
   const overview = {
-    success_count: latestRows.filter((row) => row.status === 'SUCCESS').length,
+    success_count: latestRows.filter((row) => isSuccessfulStatus(row.status)).length,
     pending_count: latestRows.filter((row) => row.status === 'PENDING_TODAY').length,
-    failed_count: latestRows.filter((row) => row.status !== 'SUCCESS' && row.status !== 'PENDING_TODAY').length,
+    failed_count: latestRows.filter((row) => !isSuccessfulStatus(row.status) && row.status !== 'PENDING_TODAY').length,
     product_count: PRODUCTS.length,
     country_count: COUNTRIES.length,
     latest_monitor_date: latestDate,
@@ -83,7 +83,11 @@ function normalizeRun(run) {
 }
 
 function normalizeDate(item) {
-  return String(item.date ?? item.monitor_file_date ?? item.monitor_date ?? '').slice(0, 10);
+  const date = String(item.date ?? item.monitor_file_date ?? item.monitor_date ?? '').trim();
+  if (/^\d{8}$/.test(date)) {
+    return `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`;
+  }
+  return date.slice(0, 10);
 }
 
 function normalizeRank(value) {
@@ -100,6 +104,10 @@ function normalizeStatus(status, revenueRankTools) {
     return String(status).toUpperCase();
   }
   return revenueRankTools === null ? 'FAILED' : 'SUCCESS';
+}
+
+function isSuccessfulStatus(status) {
+  return status === 'SUCCESS' || status === 'PARTIAL_SUCCESS';
 }
 
 function pendingRow(date, brand, country) {
