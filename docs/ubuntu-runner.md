@@ -8,6 +8,7 @@ Cloudflare can host the dashboard, API, D1, and R2 archive, but the Sensor Tower
 - Google Chrome.
 - Xvfb, fluxbox, x11vnc, and noVNC for first login.
 - A persistent browser profile at `runtime/browser_profile`.
+- A `competitor-monitor-browser.service` systemd service that keeps Chrome and noVNC alive.
 - A `competitor-monitor.timer` systemd timer that runs daily at `00:00 Asia/Shanghai`.
 
 ## Install
@@ -30,7 +31,7 @@ TIMER_CALENDAR="*-*-* 16:00:00 UTC" APP_USER="$USER" ./linux/install_ubuntu.sh
 Start the browser and VNC bridge:
 
 ```bash
-./linux/first_run_login.sh
+sudo systemctl start competitor-monitor-browser.service
 ```
 
 Create an SSH tunnel from your workstation:
@@ -66,6 +67,7 @@ NOVNC_LISTEN=127.0.0.1
 Then test:
 
 ```bash
+sudo systemctl restart competitor-monitor-browser.service
 sudo systemctl start competitor-monitor.service
 sudo journalctl -u competitor-monitor.service -f
 ```

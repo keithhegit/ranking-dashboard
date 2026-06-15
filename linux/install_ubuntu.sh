@@ -73,6 +73,26 @@ ExecStart=$APP_DIR/linux/run_daily.sh
 TimeoutStartSec=7200
 EOF
 
+sudo tee /etc/systemd/system/competitor-monitor-browser.service >/dev/null <<EOF
+[Unit]
+Description=Competitor monitor browser and VNC session
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=$APP_USER
+WorkingDirectory=$APP_DIR
+EnvironmentFile=-/etc/competitor-monitor.env
+ExecStart=$APP_DIR/linux/browser_service.sh
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 sudo tee /etc/systemd/system/competitor-monitor.timer >/dev/null <<EOF
 [Unit]
 Description=Run competitor monitor daily at 00:00
@@ -102,6 +122,7 @@ EOF
 fi
 
 sudo systemctl daemon-reload
+sudo systemctl enable competitor-monitor-browser.service
 sudo systemctl enable competitor-monitor.timer
 
 echo "[7/7] Done"
