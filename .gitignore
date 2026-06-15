@@ -1,0 +1,15 @@
+.venv/
+runtime/
+output/*
+!output/.gitkeep
+logs/*
+!logs/.gitkeep
+screenshots/*
+!screenshots/.gitkeep
+__pycache__/
+*.py[cod]
+!engine/sensor_tower_multi_product_multi_country_20260428.pyc
+dashboard.html
+*.pid
+*.zip
+

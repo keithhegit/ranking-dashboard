@@ -1,0 +1,39 @@
+{
+  "tiers": {
+    "core": {
+      "label": "重点市场",
+      "countries": ["TH", "BR", "PH", "US", "VN", "TR", "MX", "HK", "TW"]
+    },
+    "secondary": {
+      "label": "次级市场",
+      "countries": ["ID", "KR", "JP", "DE", "GB", "PL", "FR", "MY", "IT"]
+    },
+    "potential": {
+      "label": "潜力市场",
+      "countries": ["SG", "IN"]
+    }
+  },
+  "country_names": {
+    "TH": "泰国",
+    "BR": "巴西",
+    "PH": "菲律宾",
+    "US": "美国",
+    "VN": "越南",
+    "TR": "土耳其",
+    "MX": "墨西哥",
+    "HK": "香港",
+    "TW": "台湾",
+    "ID": "印度尼西亚",
+    "KR": "韩国",
+    "JP": "日本",
+    "DE": "德国",
+    "GB": "英国",
+    "PL": "波兰",
+    "FR": "法国",
+    "MY": "马来西亚",
+    "IT": "意大利",
+    "SG": "新加坡",
+    "IN": "印度"
+  }
+}
+

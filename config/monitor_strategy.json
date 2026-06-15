@@ -1,0 +1,31 @@
+﻿{
+  "default_mode": "daily_core",
+  "core_countries": ["TH", "BR", "PH", "US", "VN", "TR", "MX", "HK", "TW"],
+  "potential_countries": ["SG", "IN"],
+  "full_countries": ["TH", "BR", "PH", "US", "VN", "TR", "MX", "HK", "TW", "ID", "KR", "JP", "DE", "GB", "PL", "FR", "MY", "IT", "SG", "IN"],
+  "daily_metrics": {
+    "tools": true,
+    "apps": false,
+    "free": false
+  },
+  "weekly_metrics": {
+    "tools": true,
+    "apps": true,
+    "free": true
+  },
+  "full_metrics": {
+    "tools": true,
+    "apps": true,
+    "free": true
+  },
+  "run_frequency": {
+    "daily_core": "daily",
+    "weekly_potential": "weekly",
+    "biweekly_full": "biweekly"
+  },
+  "weekly_potential_rules": {
+    "top_rank_threshold": 300,
+    "rise_threshold": 100,
+    "lookback_days": 14
+  }
+}
