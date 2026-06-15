@@ -1,6 +1,7 @@
 .venv/
 runtime/
 .dev.vars
+.npmrc
 .wrangler/
 node_modules/
 output/*
