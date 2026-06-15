@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { buildDashboardPayload } from '../src/dashboard-data.js';
 import worker from '../src/worker.js';
@@ -62,33 +63,27 @@ test('buildDashboardPayload fills missing latest product-country pairs as pendin
   assert.equal(latestUgphoneThailand.raw_tooltip_text, 'No. 2 in Tools');
   assert.equal(latestUgphoneThailand.screenshot_path, 'screenshots/ugphone-th.png');
 
-  assert.deepEqual(payload.latest_rows[1], {
-    date: '2026-06-15',
-    brand: 'ugphone',
-    country: 'BR',
-    status: 'PENDING_TODAY',
-    data_origin: 'pending',
-    revenue_rank_tools: null,
-  });
+  assert.equal(payload.latest_rows[1].date, '2026-06-15');
+  assert.equal(payload.latest_rows[1].brand, 'ugphone');
+  assert.equal(payload.latest_rows[1].country, 'BR');
+  assert.equal(payload.latest_rows[1].status, 'PENDING_TODAY');
+  assert.equal(payload.latest_rows[1].data_origin, 'pending');
+  assert.equal(payload.latest_rows[1].revenue_rank_tools, null);
 
-  assert.deepEqual(payload.latest_rows.at(-1), {
-    date: '2026-06-15',
-    brand: 'vsphone',
-    country: 'IN',
-    status: 'PENDING_TODAY',
-    data_origin: 'pending',
-    revenue_rank_tools: null,
-  });
+  assert.equal(payload.latest_rows.at(-1).date, '2026-06-15');
+  assert.equal(payload.latest_rows.at(-1).brand, 'vsphone');
+  assert.equal(payload.latest_rows.at(-1).country, 'IN');
+  assert.equal(payload.latest_rows.at(-1).status, 'PENDING_TODAY');
+  assert.equal(payload.latest_rows.at(-1).data_origin, 'pending');
+  assert.equal(payload.latest_rows.at(-1).revenue_rank_tools, null);
 
-  assert.deepEqual(payload.overview, {
-    success_count: 1,
-    pending_count: 78,
-    failed_count: 1,
-    product_count: 4,
-    country_count: 20,
-    latest_monitor_date: '2026-06-15',
-    last_run_status: 'COMPLETED',
-  });
+  assert.equal(payload.overview.success_count, 1);
+  assert.equal(payload.overview.pending_count, 78);
+  assert.equal(payload.overview.failed_count, 1);
+  assert.equal(payload.overview.product_count, 4);
+  assert.equal(payload.overview.country_count, 20);
+  assert.equal(payload.overview.latest_monitor_date, '2026-06-15');
+  assert.equal(payload.overview.last_run_status, 'COMPLETED');
 
   assert.equal(payload.series_rows.length, 3);
   assert.equal(payload.series_rows[0].revenue_rank_tools, 9);
@@ -161,6 +156,83 @@ test('buildDashboardPayload counts partial success with a rank as successful cov
   assert.equal(payload.overview.success_count, 1);
   assert.equal(payload.overview.failed_count, 0);
   assert.equal(payload.latest_rows.find((row) => row.brand === 'ugphone' && row.country === 'US').status, 'PARTIAL_SUCCESS');
+});
+
+test('buildDashboardPayload includes fields required by the original dashboard shell', () => {
+  const payload = buildDashboardPayload(
+    [
+      {
+        date: '2026-06-15',
+        brand: 'ugphone',
+        country: 'TH',
+        status: 'PARTIAL_SUCCESS',
+        data_origin: 'linux-runner',
+        revenue_rank_tools: '2',
+        tooltip_date: 'Jun 15, 2026',
+        status_detail: 'selected tooltip has partial ranks',
+        source_url: 'https://example.test/app/ugphone?country=TH',
+        crawl_time: '2026-06-15 00:03:00',
+        raw_tooltip_text: 'UgPhone 收入排行 - 工具 #2',
+        screenshot_path: '/home/ubuntu/ranking-dashboard/screenshots/ugphone_TH.png',
+      },
+    ],
+    [{ date: '2026-06-15', source: 'linux-runner', status: 'COMPLETED', row_count: 1 }],
+    '2026-06-15T10:00:00.000Z',
+  );
+
+  assert.equal(payload.overview.partial_count, 1);
+  assert.equal(payload.overview.today_crawled_count, 1);
+  assert.equal(payload.overview.today_uncrawled_count, 79);
+  assert.equal(payload.overview.history_fallback_count, 0);
+  assert.equal(payload.overview.capture_failed_count, 0);
+  assert.equal(payload.overview.review_count, 1);
+  assert.equal(payload.overview.fetch_mode, '每日自动监测');
+  assert.equal(payload.country_names.TH, '泰国');
+  assert.ok(payload.market_tiers.focus.countries.includes('TH'));
+
+  const latestUgphoneThailand = payload.latest_rows.find((row) => row.brand === 'ugphone' && row.country === 'TH');
+  assert.equal(latestUgphoneThailand.package, 'com.tykeji.ugphone');
+  assert.equal(latestUgphoneThailand.country_display, '泰国 TH');
+  assert.equal(latestUgphoneThailand.market_tier, '重点市场');
+  assert.equal(latestUgphoneThailand.latest_fetch_date, '2026-06-15');
+  assert.equal(latestUgphoneThailand.fetch_mode, '每日自动监测');
+  assert.equal(latestUgphoneThailand.data_quality_status, 'need_review');
+  assert.equal(latestUgphoneThailand.data_quality_detail, 'selected tooltip has partial ranks');
+  assert.equal(latestUgphoneThailand.review_reason, '排名日期非当日，需验证');
+});
+
+test('buildDashboardPayload computes review fields after copying source detail fields', () => {
+  const payload = buildDashboardPayload(
+    [
+      {
+        date: '2026-06-15',
+        brand: 'ugphone',
+        country: 'US',
+        status: 'SUCCESS',
+        revenue_rank_tools: '385',
+        tooltip_date: 'Jun 14, 2026',
+        status_detail: 'tooltip is stale',
+      },
+    ],
+    [{ date: '2026-06-15', source: 'linux-runner', status: 'COMPLETED', row_count: 1 }],
+    '2026-06-15T10:00:00.000Z',
+  );
+
+  const latestUgphoneUnitedStates = payload.latest_rows.find((row) => row.brand === 'ugphone' && row.country === 'US');
+  assert.equal(latestUgphoneUnitedStates.data_quality_status, 'need_review');
+  assert.equal(latestUgphoneUnitedStates.data_quality_detail, 'tooltip is stale');
+  assert.equal(latestUgphoneUnitedStates.review_reason, '排名日期非当日，需验证');
+  assert.equal(payload.overview.review_count, 1);
+});
+
+test('public dashboard keeps bootstrap data before loading dynamic API data', () => {
+  const html = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
+
+  assert.doesNotMatch(html, /let DATA = null;/);
+  assert.match(html, /let DATA = \{ countries: \[/);
+  assert.match(html, /fetch\("\/api\/dashboard"/);
+  assert.match(html, /RANK_CAPTURE_FAILED/);
+  assert.match(html, /TOOLTIP_PARSE_FAILED/);
 });
 
 test('ingest rejects requests when INGEST_TOKEN is not configured', async () => {

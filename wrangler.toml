@@ -3,6 +3,9 @@ name = "competitor-monitor-dashboard"
 main = "src/worker.js"
 compatibility_date = "2026-06-15"
 workers_dev = true
+routes = [
+  { pattern = "ug-ranking-dashboard.keithhe.com", custom_domain = true }
+]
 
 [assets]
 directory = "./public/"

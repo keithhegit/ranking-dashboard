@@ -1,93 +1,172 @@
 # Cloud Phone Competitor Ranking Dashboard
 
-Windows 上的 Sensor Tower 云手机竞品排名采集与静态看板工具。当前监测 UGphone、LDCloud、Redfinger、VSPhone 在 20 个市场的“收入排行 - 工具”排名。
+Sensor Tower 云手机竞品排名自动采集与 Cloudflare 在线看板。当前监测 UGPhone、LDCloud、Redfinger、VSPhone 在 20 个市场的“收入排行 - 工具”排名。
 
-本仓库同时包含 Cloudflare 托管改造骨架：Worker 定时任务、D1 数据库、R2 原始快照归档、以及由 Worker Assets 托管的前端页面。Cloudflare Cron 已按北京时间每日 00:00 设计；因为现有采集引擎依赖本机浏览器登录和 CPython 3.13 `.pyc`，实际采集数据需要通过 JSON Feed 或本机上传桥接进入 Worker。详见 `docs/cloudflare-setup.md`。
+## 当前线上流程
 
-## 使用条件
+旧版仓库的流程是 Windows 本地双击 `RUN_DAILY.bat`，采集后生成本机 `dashboard.html` 并打开 `http://127.0.0.1:8765/dashboard.html`。
 
-- Windows 10/11 64 位
-- Microsoft Edge 或 Google Chrome
-- Python 3.13 64 位
-- 可正常访问排名页面的 Sensor Tower 账号
-- 遵守 Sensor Tower 的服务条款和所在组织的数据使用规则
+现在流程已经改为：
 
-抓取引擎是 CPython 3.13 编译文件，因此其他 Python 版本不能运行。
+1. Ubuntu runner 每天北京时间 00:00 由 `competitor-monitor.timer` 自动触发。
+2. Runner 启动已登录的 Chrome Profile，并通过 Playwright 模拟鼠标操作 Sensor Tower。
+3. 抓取 4 个产品、20 个国家，只保留“收入排行 - 工具”。
+4. Ubuntu 本地仍然保存 CSV、日志、截图，并重建原版 `dashboard.html`。
+5. 采集完成后，Runner 将结构化结果上传到 Cloudflare Worker。
+6. Worker 写入 D1，并把原始 payload 归档到 R2。
+7. 团队直接访问 Cloudflare 托管的在线看板查看最新数据。
 
-## 第一次使用
+## 在线看板
 
-1. 下载 GitHub ZIP 并完整解压。不要直接在压缩包内运行。
-2. 双击 `FIRST_RUN_LOGIN.bat`。
-3. 脚本会创建 `.venv` 并安装依赖。
-4. 浏览器会打开 Sensor Tower。手动登录账号，并确认可以看到应用排名页面。
-5. 回到命令窗口按 Enter。
+当前 Worker 地址：
 
-登录信息只保存在当前电脑的 `runtime/browser_profile`，不会上传到 GitHub。
+- `https://competitor-monitor-dashboard.keithhe2021.workers.dev`
 
-为了让自动化稳定连接，工具使用独立的 Edge/Chrome Profile，而不是复制系统默认浏览器的 Cookie。浏览器仍然是电脑已安装的 Edge 或 Chrome。
+自定义域名：
 
-## 每日运行
+- `https://ug-ranking-dashboard.keithhe.com`
 
-双击 `RUN_DAILY.bat`。脚本会：
+线上页面使用原 `dashboard.html` 的视觉样式和交互习惯，数据源改为 `/api/dashboard`，由 D1 中最新采集结果自动驱动。
 
-1. 启动已登录的浏览器 Profile。
-2. 抓取 4 个产品、20 个国家。
-3. 仅保存“收入排行 - 工具”。
-4. 合并批次结果并生成 CSV。
-5. 重建 `dashboard.html`。
-6. 启动本地网页并打开 `http://127.0.0.1:8765/dashboard.html`。
+## Ubuntu Runner
 
-运行可能需要一小时以上。不要关闭自动启动的浏览器窗口或命令窗口。
+远端目录：
 
-## Cloudflare 自动化托管
+- `/home/ubuntu/ranking-dashboard`
 
-Cloudflare 部署入口：
+关键服务：
 
-1. 安装依赖：`npm install`
-2. 创建 D1/R2 并把 D1 `database_id` 写入 `wrangler.toml`
-3. 设置 `INGEST_TOKEN`，可选设置 `SENSOR_TOWER_FEED_URL`
-4. 执行 D1 migration：`npm run d1:migrations:apply`
-5. 部署：`npm run deploy`
+```bash
+systemctl status competitor-monitor.timer
+systemctl status competitor-monitor.service
+systemctl status competitor-monitor-browser.service
+```
 
-如果暂时没有 Sensor Tower JSON Feed，可以继续使用现有 Windows 采集器，并让 `run_daily.ps1` 在抓取结束后自动上传到 Cloudflare：传入 `-CloudflareWorkerUrl` 和 `-CloudflareIngestToken`，或设置环境变量 `CLOUDFLARE_WORKER_URL` / `CLOUDFLARE_INGEST_TOKEN`。Worker 的 `POST /api/ingest` 会写入 D1，并把原始 JSON 存到 R2。
+常用命令：
 
-不想使用 Windows VPS 时，可以用 Ubuntu 作为采集 runner。详见 `docs/ubuntu-runner.md`，它会安装 Chrome、Python 3.13、VNC 首次登录环境和 systemd 每日定时任务。
+```bash
+# 查看当天自动任务日志
+journalctl -u competitor-monitor.service --since today -f
+
+# 手动触发一次每日采集
+sudo systemctl start competitor-monitor.service
+
+# 查看下一次 00:00 自动触发时间
+systemctl list-timers competitor-monitor.timer
+```
+
+浏览器观察通道：
+
+```powershell
+ssh -L 6080:127.0.0.1:6080 ubuntu@14.136.93.109
+```
+
+然后在 Windows 浏览器打开：
+
+```text
+http://127.0.0.1:6080/vnc.html
+```
 
 ## 输出目录
 
-- `output/`：每日 CSV 和批次日志
+Ubuntu runner 会保留原仓库的本地产物：
+
+- `output/`：每日 CSV、批次 CSV、批次日志
 - `logs/`：抓取诊断日志
-- `screenshots/`：抓取证据截图
-- `dashboard.html`：最新看板
-- `runtime/browser_profile/`：本机登录状态，严禁分享
+- `screenshots/`：页面加载和 hover 证据截图
+- `dashboard.html`：原版本地看板
+- `runtime/browser_profile/`：Sensor Tower 登录态，严禁分享
 
-## 常见问题
+Cloudflare 侧保存：
 
-### Python 3.13 未安装
+- D1：结构化排名数据和每日 run 状态
+- R2：每日上传的原始 JSON snapshot
+- Worker Assets：在线看板前端
 
-从 [python.org](https://www.python.org/downloads/) 安装 Python 3.13 64 位，并勾选 Python Launcher。安装后重新运行 `FIRST_RUN_LOGIN.bat`。
+## Cloudflare 资源
 
-### 页面显示未登录
+Wrangler 配置在 `wrangler.toml`：
 
-重新运行 `FIRST_RUN_LOGIN.bat`，在自动打开的浏览器窗口中登录。
+- Worker：`competitor-monitor-dashboard`
+- D1 binding：`DB`
+- D1 database id：`be38c2d0-f596-46ba-8aee-22c324826f63`
+- R2 binding：`SNAPSHOTS`
+- R2 bucket：`competitor-monitor-dashboard-snapshots`
+- Custom domain：`ug-ranking-dashboard.keithhe.com`
+- Cron：`0 16 * * *`，对应北京时间每日 00:00
 
-### 页面出现空白排名
+部署命令：
 
-对应任务可能是 `MISSING`、页面加载失败，或者趋势图没有可捕获的 tooltip。查看 `output/daily_all_YYYYMMDD/daily_all.log` 和数据管理页。
+```bash
+npm install
+npm test
+npm run d1:migrations:apply
+npm run deploy
+```
 
-### 端口被占用
+`INGEST_TOKEN` 是 Worker secret，Ubuntu runner 通过 `/etc/competitor-monitor.env` 持有同一 token。不要把 token 写入仓库。
 
-工具使用本机端口 `9222` 连接浏览器、使用 `8765` 提供 dashboard。关闭占用这些端口的程序后重试。
+## 如何确认 00:00 任务已完成
+
+1. 看 systemd 服务是否结束：
+
+```bash
+systemctl is-active competitor-monitor.service
+```
+
+完成后通常会返回 `inactive`。
+
+2. 看当天 CSV 行数：
+
+```bash
+python3 - <<'PY'
+import csv
+path = '/home/ubuntu/ranking-dashboard/output/sensor_tower_multi_product_multi_country_YYYYMMDD.csv'
+with open(path, newline='', encoding='utf-8-sig') as f:
+    print(sum(1 for _ in csv.DictReader(f)))
+PY
+```
+
+完整全量目标是 80 行。
+
+3. 看上传结果：
+
+```bash
+journalctl -u competitor-monitor.service --since today | grep -i cloudflare
+```
+
+正常情况下会看到 Cloudflare upload start/finished，Worker 返回 `accepted`。
+
+4. 打开在线看板：
+
+```text
+https://ug-ranking-dashboard.keithhe.com
+```
+
+如果自定义域名刚配置，短时间内也可以先看：
+
+```text
+https://competitor-monitor-dashboard.keithhe2021.workers.dev
+```
+
+## Windows 本地兼容入口
+
+旧入口仍保留：
+
+- `FIRST_RUN_LOGIN.bat`
+- `RUN_DAILY.bat`
+- `run_daily.ps1`
+
+它们适合本地调试或备用采集。正式自动化以 Ubuntu runner + Cloudflare 看板为准。
 
 ## 隐私与发布
 
-以下内容已被 `.gitignore` 排除，不应提交：
+以下内容不应提交到 GitHub：
 
-- 浏览器 Profile、Cookie 和登录状态
-- 抓取结果 CSV
-- 日志与截图
-- Python 虚拟环境
-- 生成后的 dashboard
+- `runtime/` 浏览器 Profile、Cookie、登录态
+- `output/` 真实采集 CSV
+- `logs/` 日志
+- `screenshots/` 证据截图
+- `.dev.vars`、`.npmrc`、任何 token 或账号信息
 
-不要将自己的 `runtime/`、`logs/`、`screenshots/` 或真实数据文件上传到公开仓库。
-
+如果曾经在聊天、脚本或终端中暴露过服务器密码，建议尽快轮换密码并改为 SSH key 登录。
