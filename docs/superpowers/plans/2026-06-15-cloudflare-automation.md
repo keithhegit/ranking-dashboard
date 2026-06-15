@@ -19,23 +19,23 @@
 - Create: `migrations/0001_init.sql`
 - Test: `test/dashboard-data.test.js`
 
-- [ ] **Step 1: Write failing tests for dashboard assembly**
+- [x] **Step 1: Write failing tests for dashboard assembly**
 
 Create tests that verify dashboard rows are grouped by latest monitor date, missing configured product/country pairs become `PENDING_TODAY`, and overview counts are derived from rank statuses.
 
-- [ ] **Step 2: Implement pure dashboard assembly**
+- [x] **Step 2: Implement pure dashboard assembly**
 
 Implement constants for products/countries and pure helpers that turn D1 rows into the JSON payload consumed by the frontend.
 
-- [ ] **Step 3: Implement Worker endpoints**
+- [x] **Step 3: Implement Worker endpoints**
 
 Add `GET /api/health`, `GET /api/dashboard`, `POST /api/ingest`, and scheduled execution. `POST /api/ingest` requires `Authorization: Bearer <INGEST_TOKEN>`.
 
-- [ ] **Step 4: Add D1 schema**
+- [x] **Step 4: Add D1 schema**
 
 Create tables for run metadata and ranking rows. Use idempotent inserts so repeated daily runs can be retried.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 Run `npm test`.
 
@@ -47,15 +47,15 @@ Run `npm test`.
 - Create: `.dev.vars.example`
 - Modify: `.gitignore`
 
-- [ ] **Step 1: Add npm scripts**
+- [x] **Step 1: Add npm scripts**
 
 Add scripts for `test`, `dev`, `deploy`, `d1:migrations:apply`, and `d1:migrations:apply:local`.
 
-- [ ] **Step 2: Add Worker bindings**
+- [x] **Step 2: Add Worker bindings**
 
 Configure D1 binding `DB`, R2 binding `SNAPSHOTS`, static asset directory `public`, and cron trigger `0 16 * * *` because Cloudflare cron uses UTC and Asia/Shanghai midnight is 16:00 UTC.
 
-- [ ] **Step 3: Add local env template**
+- [x] **Step 3: Add local env template**
 
 Document `INGEST_TOKEN` and optional `SENSOR_TOWER_FEED_URL`.
 
@@ -64,11 +64,11 @@ Document `INGEST_TOKEN` and optional `SENSOR_TOWER_FEED_URL`.
 **Files:**
 - Create: `public/index.html`
 
-- [ ] **Step 1: Build API-driven dashboard shell**
+- [x] **Step 1: Build API-driven dashboard shell**
 
 Create a static dashboard that fetches `/api/dashboard`, renders overview counters, latest rank matrix, and run metadata.
 
-- [ ] **Step 2: Add empty/error states**
+- [x] **Step 2: Add empty/error states**
 
 Show actionable states for no data, pending rows, and API errors.
 
@@ -79,14 +79,23 @@ Show actionable states for no data, pending rows, and API errors.
 - Create: `docs/cloudflare-setup.md`
 - Modify: `README.md`
 
-- [ ] **Step 1: Add upload bridge**
+- [x] **Step 1: Add upload bridge**
 
 Create a PowerShell script that reads the existing generated daily CSV and uploads it to `POST /api/ingest`.
 
-- [ ] **Step 2: Document setup**
+- [x] **Step 2: Document setup**
 
 Document D1/R2 creation, required Wrangler secrets, Pages/Worker deployment, cron timezone, and the current limitation that Sensor Tower browser automation cannot run directly inside Workers.
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 Run `npm test` and a local Worker smoke test if dependencies are installed.
+
+### Deployment Verification
+
+- [x] Applied remote D1 migration to `competitor-monitor-dashboard` (`be38c2d0-f596-46ba-8aee-22c324826f63`).
+- [x] Deployed Worker Assets to `https://competitor-monitor-dashboard.keithhe2021.workers.dev`.
+- [x] Configured `INGEST_TOKEN` Worker secret and Ubuntu runner `/etc/competitor-monitor.env`.
+- [x] Verified Ubuntu CSV upload returns `accepted:1` and archives to R2 bucket `competitor-monitor-dashboard-snapshots`.
+- [x] Verified dashboard API reports UGPhone US rank `#385` from `linux-runner` for `2026-06-15`.
+- [x] Verified `competitor-monitor.timer` and `competitor-monitor-browser.service` are active on the Ubuntu runner.
