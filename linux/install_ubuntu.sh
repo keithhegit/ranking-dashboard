@@ -95,6 +95,8 @@ if [[ ! -f /etc/competitor-monitor.env ]]; then
 DISPLAY=:99
 VNC_PORT=5900
 NOVNC_PORT=6080
+VNC_LISTEN=127.0.0.1
+NOVNC_LISTEN=127.0.0.1
 EOF
   sudo chmod 600 /etc/competitor-monitor.env
 fi

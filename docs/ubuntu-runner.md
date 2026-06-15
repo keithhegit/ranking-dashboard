@@ -33,10 +33,16 @@ Start the browser and VNC bridge:
 ./linux/first_run_login.sh
 ```
 
-Open this from your workstation:
+Create an SSH tunnel from your workstation:
+
+```bash
+ssh -L 6080:127.0.0.1:6080 ubuntu@<ubuntu-host>
+```
+
+Then open this locally:
 
 ```text
-http://<ubuntu-host>:6080/vnc.html
+http://127.0.0.1:6080/vnc.html
 ```
 
 Log in to Sensor Tower in Chrome. The login state is stored under `runtime/browser_profile`.
@@ -53,6 +59,8 @@ CLOUDFLARE_INGEST_TOKEN=<same token as Worker INGEST_TOKEN>
 DISPLAY=:99
 VNC_PORT=5900
 NOVNC_PORT=6080
+VNC_LISTEN=127.0.0.1
+NOVNC_LISTEN=127.0.0.1
 ```
 
 Then test:

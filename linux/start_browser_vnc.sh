@@ -5,6 +5,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DISPLAY="${DISPLAY:-:99}"
 VNC_PORT="${VNC_PORT:-5900}"
 NOVNC_PORT="${NOVNC_PORT:-6080}"
+VNC_LISTEN="${VNC_LISTEN:-127.0.0.1}"
+NOVNC_LISTEN="${NOVNC_LISTEN:-127.0.0.1}"
 BROWSER_PROFILE="${BROWSER_PROFILE:-$ROOT/runtime/browser_profile}"
 START_URL="${1:-about:blank}"
 LOG_DIR="$ROOT/logs/linux"
@@ -24,19 +26,19 @@ if ! pgrep -f "x11vnc.*$VNC_PORT" >/dev/null 2>&1; then
   if [[ -n "${VNC_PASSWORD:-}" ]]; then
     PASSFILE="$ROOT/runtime/x11vnc.pass"
     x11vnc -storepasswd "$VNC_PASSWORD" "$PASSFILE" >/dev/null
-    nohup x11vnc -display "$DISPLAY" -rfbport "$VNC_PORT" -rfbauth "$PASSFILE" -forever -shared >"$LOG_DIR/x11vnc.log" 2>&1 &
+    nohup x11vnc -display "$DISPLAY" -listen "$VNC_LISTEN" -rfbport "$VNC_PORT" -rfbauth "$PASSFILE" -forever -shared >"$LOG_DIR/x11vnc.log" 2>&1 &
   else
-    nohup x11vnc -display "$DISPLAY" -rfbport "$VNC_PORT" -forever -shared -nopw >"$LOG_DIR/x11vnc.log" 2>&1 &
+    nohup x11vnc -display "$DISPLAY" -listen "$VNC_LISTEN" -rfbport "$VNC_PORT" -forever -shared -nopw >"$LOG_DIR/x11vnc.log" 2>&1 &
   fi
 fi
 
 if ! pgrep -f "novnc.*$NOVNC_PORT|websockify.*$NOVNC_PORT" >/dev/null 2>&1; then
   if command -v novnc_proxy >/dev/null 2>&1; then
-    nohup novnc_proxy --listen "$NOVNC_PORT" --vnc "localhost:$VNC_PORT" >"$LOG_DIR/novnc.log" 2>&1 &
+    nohup novnc_proxy --listen "$NOVNC_LISTEN:$NOVNC_PORT" --vnc "localhost:$VNC_PORT" >"$LOG_DIR/novnc.log" 2>&1 &
   elif [[ -x /usr/share/novnc/utils/novnc_proxy ]]; then
-    nohup /usr/share/novnc/utils/novnc_proxy --listen "$NOVNC_PORT" --vnc "localhost:$VNC_PORT" >"$LOG_DIR/novnc.log" 2>&1 &
+    nohup /usr/share/novnc/utils/novnc_proxy --listen "$NOVNC_LISTEN:$NOVNC_PORT" --vnc "localhost:$VNC_PORT" >"$LOG_DIR/novnc.log" 2>&1 &
   else
-    nohup websockify --web=/usr/share/novnc/ "$NOVNC_PORT" "localhost:$VNC_PORT" >"$LOG_DIR/novnc.log" 2>&1 &
+    nohup websockify --web=/usr/share/novnc/ "$NOVNC_LISTEN:$NOVNC_PORT" "localhost:$VNC_PORT" >"$LOG_DIR/novnc.log" 2>&1 &
   fi
 fi
 
