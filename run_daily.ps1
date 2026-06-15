@@ -3,7 +3,10 @@ param(
     [string] $DateIso = (Get-Date -Format "yyyy-MM-dd"),
     [int] $BatchTimeoutSeconds = 600,
     [int] $RateLimitCooldownSeconds = 300,
-    [switch] $SkipDashboard
+    [switch] $SkipDashboard,
+    [string] $CloudflareWorkerUrl = $env:CLOUDFLARE_WORKER_URL,
+    [string] $CloudflareIngestToken = $env:CLOUDFLARE_INGEST_TOKEN,
+    [switch] $SkipCloudflareUpload
 )
 
 $ErrorActionPreference = "Continue"
@@ -215,6 +218,26 @@ Copy-Item -LiteralPath $detailOut -Destination (Join-Path $ProjectOutput "sensor
 Copy-Item -LiteralPath $summaryOut -Destination (Join-Path $ProjectOutput "sensor_tower_multi_product_summary_$Date.csv") -Force
 Copy-Item -LiteralPath $fullDetailOut -Destination (Join-Path $ProjectOutput "sensor_tower_multi_product_multi_country_full80_$Date.csv") -Force
 Copy-Item -LiteralPath $fullSummaryOut -Destination (Join-Path $ProjectOutput "sensor_tower_multi_product_summary_full80_$Date.csv") -Force
+
+if (-not $SkipCloudflareUpload) {
+    if ($CloudflareWorkerUrl -and $CloudflareIngestToken) {
+        $uploadScript = Join-Path $Project "scripts\upload_daily_to_cloudflare.ps1"
+        if (-not (Test-Path -LiteralPath $uploadScript)) {
+            throw "Cloudflare upload script not found: $uploadScript"
+        }
+        Write-RunLog "Cloudflare upload start: $CloudflareWorkerUrl"
+        $global:LASTEXITCODE = 0
+        & $uploadScript -WorkerUrl $CloudflareWorkerUrl -IngestToken $CloudflareIngestToken -Date $Date
+        if ($LASTEXITCODE -ne 0) {
+            throw "Cloudflare upload failed with exit code $LASTEXITCODE"
+        }
+        Write-RunLog "Cloudflare upload finished"
+    } elseif ($CloudflareWorkerUrl -or $CloudflareIngestToken) {
+        throw "Cloudflare upload requires both CloudflareWorkerUrl and CloudflareIngestToken."
+    } else {
+        Write-RunLog "Cloudflare upload skipped: CloudflareWorkerUrl and CloudflareIngestToken are not configured"
+    }
+}
 
 if (-not $SkipDashboard) {
     & $Python (Join-Path $Project "dashboard_builder.py")

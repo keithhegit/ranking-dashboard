@@ -1,0 +1,8 @@
+# Copy to .dev.vars for local Wrangler development.
+# Do not commit real tokens.
+
+INGEST_TOKEN=replace-with-a-long-random-token
+
+# Optional: if set, the scheduled Worker fetches this JSON feed each day.
+# The feed should return: {"date":"YYYY-MM-DD","source":"sensortower","rows":[...]}
+SENSOR_TOWER_FEED_URL=

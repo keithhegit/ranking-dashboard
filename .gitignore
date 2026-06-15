@@ -1,5 +1,8 @@
 .venv/
 runtime/
+.dev.vars
+.wrangler/
+node_modules/
 output/*
 !output/.gitkeep
 logs/*

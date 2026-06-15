@@ -1,0 +1,24 @@
+"$schema" = "./node_modules/wrangler/config-schema.json"
+name = "competitor-monitor-dashboard"
+main = "src/worker.js"
+compatibility_date = "2026-06-15"
+workers_dev = true
+
+[assets]
+directory = "./public/"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+
+[triggers]
+# Cloudflare cron is UTC. 16:00 UTC is 00:00 Asia/Shanghai the next day.
+crons = ["0 16 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "competitor-monitor-dashboard"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "SNAPSHOTS"
+bucket_name = "competitor-monitor-dashboard-snapshots"
