@@ -14,31 +14,31 @@ LOG_DIR="$ROOT/logs/linux"
 mkdir -p "$BROWSER_PROFILE" "$LOG_DIR"
 
 if ! pgrep -f "Xvfb $DISPLAY" >/dev/null 2>&1; then
-  nohup Xvfb "$DISPLAY" -screen 0 1920x1080x24 -nolisten tcp >"$LOG_DIR/xvfb.log" 2>&1 &
+  nohup Xvfb "$DISPLAY" -screen 0 1920x1080x24 -nolisten tcp </dev/null >"$LOG_DIR/xvfb.log" 2>&1 &
   sleep 1
 fi
 
 if ! DISPLAY="$DISPLAY" pgrep -f "fluxbox" >/dev/null 2>&1; then
-  nohup env DISPLAY="$DISPLAY" fluxbox >"$LOG_DIR/fluxbox.log" 2>&1 &
+  nohup env DISPLAY="$DISPLAY" fluxbox </dev/null >"$LOG_DIR/fluxbox.log" 2>&1 &
 fi
 
 if ! pgrep -f "x11vnc.*$VNC_PORT" >/dev/null 2>&1; then
   if [[ -n "${VNC_PASSWORD:-}" ]]; then
     PASSFILE="$ROOT/runtime/x11vnc.pass"
     x11vnc -storepasswd "$VNC_PASSWORD" "$PASSFILE" >/dev/null
-    nohup x11vnc -display "$DISPLAY" -listen "$VNC_LISTEN" -rfbport "$VNC_PORT" -rfbauth "$PASSFILE" -forever -shared >"$LOG_DIR/x11vnc.log" 2>&1 &
+    nohup x11vnc -display "$DISPLAY" -listen "$VNC_LISTEN" -rfbport "$VNC_PORT" -rfbauth "$PASSFILE" -forever -shared </dev/null >"$LOG_DIR/x11vnc.log" 2>&1 &
   else
-    nohup x11vnc -display "$DISPLAY" -listen "$VNC_LISTEN" -rfbport "$VNC_PORT" -forever -shared -nopw >"$LOG_DIR/x11vnc.log" 2>&1 &
+    nohup x11vnc -display "$DISPLAY" -listen "$VNC_LISTEN" -rfbport "$VNC_PORT" -forever -shared -nopw </dev/null >"$LOG_DIR/x11vnc.log" 2>&1 &
   fi
 fi
 
 if ! pgrep -f "novnc.*$NOVNC_PORT|websockify.*$NOVNC_PORT" >/dev/null 2>&1; then
   if command -v novnc_proxy >/dev/null 2>&1; then
-    nohup novnc_proxy --listen "$NOVNC_LISTEN:$NOVNC_PORT" --vnc "localhost:$VNC_PORT" >"$LOG_DIR/novnc.log" 2>&1 &
+    nohup novnc_proxy --listen "$NOVNC_LISTEN:$NOVNC_PORT" --vnc "localhost:$VNC_PORT" </dev/null >"$LOG_DIR/novnc.log" 2>&1 &
   elif [[ -x /usr/share/novnc/utils/novnc_proxy ]]; then
-    nohup /usr/share/novnc/utils/novnc_proxy --listen "$NOVNC_LISTEN:$NOVNC_PORT" --vnc "localhost:$VNC_PORT" >"$LOG_DIR/novnc.log" 2>&1 &
+    nohup /usr/share/novnc/utils/novnc_proxy --listen "$NOVNC_LISTEN:$NOVNC_PORT" --vnc "localhost:$VNC_PORT" </dev/null >"$LOG_DIR/novnc.log" 2>&1 &
   else
-    nohup websockify --web=/usr/share/novnc/ "$NOVNC_LISTEN:$NOVNC_PORT" "localhost:$VNC_PORT" >"$LOG_DIR/novnc.log" 2>&1 &
+    nohup websockify --web=/usr/share/novnc/ "$NOVNC_LISTEN:$NOVNC_PORT" "localhost:$VNC_PORT" </dev/null >"$LOG_DIR/novnc.log" 2>&1 &
   fi
 fi
 
@@ -51,7 +51,7 @@ if ! curl -fsS "http://127.0.0.1:9222/json/version" >/dev/null 2>&1; then
     --no-first-run \
     --no-default-browser-check \
     --disable-dev-shm-usage \
-    "$START_URL" >"$LOG_DIR/chrome.log" 2>&1 &
+    "$START_URL" </dev/null >"$LOG_DIR/chrome.log" 2>&1 &
 fi
 
 for _ in $(seq 1 30); do
