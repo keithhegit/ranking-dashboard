@@ -47,6 +47,68 @@ def set_if_present(module, name, value):
         setattr(module, name, value)
 
 
+def build_tooltip_reader_script():
+    return r"""
+    () => {
+      const out = [];
+      const seen = new Set();
+      const tooltipTextPattern = /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|#\s*[0-9,]+|Revenue|Grossing|\u6536\u5165\u6392\u884c)/;
+      const selectors = [
+        '[class*="TooltipChartRankings-module__tooltipCardContent"]',
+        '[class*="TooltipChartValues-module__tooltipCardContent"]',
+        '[class*="TooltipChartValues-module__tooltipCard"]',
+        '.highcharts-tooltip',
+        'g.highcharts-tooltip',
+        '.highcharts-label.highcharts-tooltip',
+        '[role="tooltip"]',
+        '.echarts-tooltip',
+        '.recharts-tooltip-wrapper',
+        '.tippy-box',
+        'div[class*="tooltip"]',
+        'div[class*="Tooltip"]'
+      ];
+      const add = (selector, node) => {
+        if (!node || seen.has(node)) return;
+        seen.add(node);
+        const rect = node.getBoundingClientRect();
+        const style = window.getComputedStyle(node);
+        const text = (node.innerText || node.textContent || '').trim();
+        const html = node.innerHTML || node.outerHTML || '';
+        const visible = rect && rect.width > 0 && rect.height > 0
+          && style.display !== 'none'
+          && style.visibility !== 'hidden'
+          && style.opacity !== '0';
+        const hasTooltipText = tooltipTextPattern.test(text);
+        if (!visible && !hasTooltipText) return;
+        if (!text && !html) return;
+        out.push({
+          selector,
+          text,
+          html,
+          width: rect ? rect.width : 0,
+          height: rect ? rect.height : 0,
+          x: rect ? rect.x : 0,
+          y: rect ? rect.y : 0
+        });
+      };
+      selectors.forEach((selector) => {
+        document.querySelectorAll(selector).forEach((node) => add(selector, node));
+      });
+      return out;
+    }
+    """
+
+
+def patch_tooltip_reader(module):
+    def read_tooltip_candidates(page):
+        try:
+            return page.evaluate(build_tooltip_reader_script())
+        except Exception:
+            return []
+
+    module.read_tooltip_candidates = read_tooltip_candidates
+
+
 def patch_tools_only_parser(module):
     original = getattr(module, "parse_tooltip_payload", None)
     if not callable(original):
@@ -79,6 +141,7 @@ def patch_tools_only_parser(module):
 
 def main():
     mod = load_snapshot_module()
+    patch_tooltip_reader(mod)
     patch_tools_only_parser(mod)
     brands = [brand.lower() for brand in parse_csv_env("ST_PRODUCTS", list(PRODUCT_MAP))]
     countries = [country.upper() for country in parse_csv_env("ST_COUNTRIES", DEFAULT_COUNTRIES)]

@@ -1,0 +1,16 @@
+{
+  "pairs": [
+    {
+      "brand": "vsphone",
+      "country": "US"
+    },
+    {
+      "brand": "vsphone",
+      "country": "JP"
+    },
+    {
+      "brand": "vsphone",
+      "country": "DE"
+    }
+  ]
+}

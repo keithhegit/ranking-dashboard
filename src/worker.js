@@ -170,6 +170,8 @@ async function ingestPayload(env, payload) {
     });
 
     for (const row of rows) {
+      const excludedPriority = rankingRowPrioritySql('excluded');
+      const currentPriority = rankingRowPrioritySql('ranking_rows');
       await env.DB.prepare(
         `INSERT INTO ranking_rows
           (
@@ -200,7 +202,8 @@ async function ingestPayload(env, payload) {
           crawl_time = excluded.crawl_time,
           raw_tooltip_text = excluded.raw_tooltip_text,
           screenshot_path = excluded.screenshot_path,
-          updated_at = CURRENT_TIMESTAMP`,
+          updated_at = CURRENT_TIMESTAMP
+         WHERE ${excludedPriority} >= ${currentPriority}`,
       )
         .bind(
           row.date,
@@ -230,6 +233,16 @@ async function ingestPayload(env, payload) {
     snapshot_key: snapshotKey,
     archivePromise,
   };
+}
+
+export function rankingRowPrioritySql(alias) {
+  return `(CASE
+            WHEN ${alias}.revenue_rank_tools IS NOT NULL THEN 100
+            WHEN ${alias}.status IN ('SUCCESS', 'PARTIAL_SUCCESS') THEN 90
+            WHEN ${alias}.status = 'NO_CATEGORY_RANKING_DATA' THEN 80
+            WHEN ${alias}.status IN ('RATE_LIMITED', 'PENDING_TODAY') THEN 10
+            ELSE 20
+          END)`;
 }
 
 function normalizeIngestRow(row, date, source) {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { buildDashboardPayload } from '../src/dashboard-data.js';
-import worker from '../src/worker.js';
+import worker, { rankingRowPrioritySql } from '../src/worker.js';
 
 test('buildDashboardPayload fills missing latest product-country pairs as pending', () => {
   const payload = buildDashboardPayload(
@@ -156,6 +156,28 @@ test('buildDashboardPayload counts partial success with a rank as successful cov
   assert.equal(payload.overview.success_count, 1);
   assert.equal(payload.overview.failed_count, 0);
   assert.equal(payload.latest_rows.find((row) => row.brand === 'ugphone' && row.country === 'US').status, 'PARTIAL_SUCCESS');
+});
+
+test('buildDashboardPayload treats known no-category markets as terminal non-failures', () => {
+  const payload = buildDashboardPayload(
+    [
+      {
+        date: '2026-06-15',
+        brand: 'vsphone',
+        country: 'US',
+        status: 'NO_CATEGORY_RANKING_DATA',
+        status_detail: 'Sensor Tower page shows no available category ranking data for this market',
+      },
+    ],
+    [{ date: '2026-06-15', status: 'COMPLETED' }],
+    '2026-06-15T10:00:00.000Z',
+  );
+
+  const latestVsphoneUnitedStates = payload.latest_rows.find((row) => row.brand === 'vsphone' && row.country === 'US');
+  assert.equal(payload.overview.no_category_data_count, 1);
+  assert.equal(payload.overview.failed_count, 0);
+  assert.equal(payload.overview.review_count, 0);
+  assert.equal(latestVsphoneUnitedStates.data_quality_status, 'verified');
 });
 
 test('buildDashboardPayload includes fields required by the original dashboard shell', () => {
@@ -341,6 +363,29 @@ test('ingest ignores rows outside configured products and countries', async () =
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { accepted: 0, snapshot_key: null });
   assert.equal(db.runs.filter((run) => run.sql.includes('INSERT INTO ranking_rows')).length, 0);
+});
+
+test('ingest SQL prevents RATE_LIMITED rows from overwriting ranked rows', async () => {
+  const db = new FakeDb();
+  const response = await worker.fetch(
+    new Request('https://dashboard.test/api/ingest', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer secret' },
+      body: JSON.stringify({
+        date: '2026-06-15',
+        source: 'csv_upload',
+        rows: [{ brand: 'ugphone', country: 'US', status: 'RATE_LIMITED', revenue_rank_tools: '' }],
+      }),
+    }),
+    { DB: db, INGEST_TOKEN: 'secret' },
+    { waitUntil() {} },
+  );
+
+  assert.equal(response.status, 200);
+  const rankingInsert = db.runs.find((run) => run.sql.includes('INSERT INTO ranking_rows'));
+  assert.ok(rankingInsert.sql.includes('WHERE'));
+  assert.ok(rankingInsert.sql.includes(rankingRowPrioritySql('excluded')));
+  assert.ok(rankingInsert.sql.includes(rankingRowPrioritySql('ranking_rows')));
 });
 
 function ingestRequest(token, date = '2026-06-15') {

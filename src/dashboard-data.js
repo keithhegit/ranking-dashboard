@@ -34,13 +34,15 @@ export function buildDashboardPayload(rows = [], runs = [], nowIso = new Date().
   const todayCrawledCount = latestRows.filter((row) => row.data_origin !== 'pending').length;
   const partialCount = latestRows.filter((row) => row.status === 'PARTIAL_SUCCESS').length;
   const captureFailedCount = latestRows.filter((row) => isCaptureFailure(row.status)).length;
+  const noCategoryDataCount = latestRows.filter((row) => isKnownNoDataStatus(row.status)).length;
   const reviewCount = latestRows.filter(needsManualReview).length;
   const overview = {
     success_count: latestRows.filter((row) => isSuccessfulStatus(row.status)).length,
     partial_count: partialCount,
     pending_count: latestRows.filter((row) => row.status === 'PENDING_TODAY').length,
-    failed_count: latestRows.filter((row) => !isSuccessfulStatus(row.status) && row.status !== 'PENDING_TODAY').length,
+    failed_count: latestRows.filter((row) => !isSuccessfulStatus(row.status) && !isKnownNoDataStatus(row.status) && row.status !== 'PENDING_TODAY').length,
     capture_failed_count: captureFailedCount,
+    no_category_data_count: noCategoryDataCount,
     review_count: reviewCount,
     today_crawled_count: todayCrawledCount,
     today_uncrawled_count: latestRows.length - todayCrawledCount,
@@ -104,7 +106,7 @@ function normalizeRankingRow(row) {
   normalized.latest_fetch_date = normalized.date;
   normalized.data_quality_detail = normalized.status_detail || '';
   const needsReview = needsManualReview(normalized);
-  normalized.data_quality_status = needsReview ? 'need_review' : normalized.status === 'SUCCESS' ? 'verified' : normalized.status === 'PENDING_TODAY' ? '' : 'need_review';
+  normalized.data_quality_status = needsReview ? 'need_review' : normalized.status === 'SUCCESS' || isKnownNoDataStatus(normalized.status) ? 'verified' : normalized.status === 'PENDING_TODAY' ? '' : 'need_review';
   normalized.review_reason = needsReview ? '排名日期非当日，需验证' : '';
 
   return normalized;
@@ -144,6 +146,10 @@ function normalizeStatus(status, revenueRankTools) {
 
 function isSuccessfulStatus(status) {
   return status === 'SUCCESS' || status === 'PARTIAL_SUCCESS';
+}
+
+function isKnownNoDataStatus(status) {
+  return status === 'NO_CATEGORY_RANKING_DATA';
 }
 
 function isCaptureFailure(status) {
