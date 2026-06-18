@@ -594,7 +594,7 @@ function renderUgFocus(){
 }
 function drawTrend(containerId, country, brands=BRAND_ORDER, height=230){
   const el = byId(containerId);
-  const dates = datesFor(country, 7);
+  const dates = datesFor(country, 45);
   if(!dates.length){ el.innerHTML = `<div class="empty">暂无真实趋势数据</div>`; return; }
   const series = brands.map(brand=>({brand,values:seriesFor(brand,country,dates)})).filter(s=>s.values.some(v=>v!==null));
   if(!series.length){ el.innerHTML = `<div class="empty">暂无真实趋势数据</div>`; return; }
@@ -606,7 +606,12 @@ function drawTrend(containerId, country, brands=BRAND_ORDER, height=230){
   const y = v => m.t + ((v-top)/(bottom-top))*(h-m.t-m.b);
   let svg = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">`;
   [top, Math.round((top+bottom)/2), bottom].forEach(v=>{ const yy=y(v); svg+=`<line x1="${m.l}" y1="${yy}" x2="${w-m.r}" y2="${yy}" stroke="#E8EEF7"/><text x="${m.l-8}" y="${yy+4}" text-anchor="end" font-size="11" fill="#94A3B8">#${Math.round(v)}</text>`; });
-  dates.forEach((d,i)=>svg+=`<text x="${x(i)}" y="${h-8}" text-anchor="middle" font-size="11" fill="#94A3B8">${d.slice(5)}</text>`);
+  const labelEvery = Math.max(1, Math.ceil(dates.length / 10));
+  dates.forEach((d,i)=>{
+    if(i === 0 || i === dates.length - 1 || i % labelEvery === 0) {
+      svg+=`<text x="${x(i)}" y="${h-8}" text-anchor="middle" font-size="11" fill="#94A3B8">${d.slice(5)}</text>`;
+    }
+  });
   series.forEach(s=>{
     const pts = s.values.map((v,i)=>v===null?null:`${x(i)},${y(v)}`).filter(Boolean).join(" ");
     svg += `<polyline points="${pts}" fill="none" stroke="${COLORS[s.brand]}" stroke-width="2.2"/>`;
