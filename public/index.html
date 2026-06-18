@@ -244,6 +244,22 @@ function countryName(c){ return `${COUNTRY_NAMES[c] || c} ${c}`; }
 function sourceUrl(r){ return r.source_url || `https://app.sensortower.com/overview/${r.package||PACKAGES[r.brand]||""}?country=${r.country}&tab=category_rankings`; }
 function evidenceHref(p){ if(!p) return ""; return p.startsWith("screenshots/") ? `../${p}` : p; }
 function latestDate(){ return DATA.overview.latest_monitor_date || DATA.latest_monitor_file_date || ""; }
+function dataCountries(){
+  const seen = new Set();
+  const add = c => { if(c) seen.add(c); };
+  (DATA.countries || []).forEach(add);
+  (DATA.series_rows || []).forEach(r=>add(r.country));
+  latestRows().forEach(r=>add(r.country));
+  return [...seen];
+}
+function orderedDataCountries(){
+  const countries = dataCountries();
+  const order = new Map();
+  GROUPS.focus.forEach((c,i)=>order.set(c,i));
+  GROUPS.potential.forEach((c,i)=>order.set(c,100+i));
+  countries.forEach((c,i)=>{ if(!order.has(c)) order.set(c,200+i); });
+  return countries.sort((a,b)=>(order.get(a)-order.get(b)) || a.localeCompare(b));
+}
 function rankOf(row){ return toNum(row && row.revenue_rank_tools); }
 function hasRank(row){ return rankOf(row)!==null; }
 function rankDateIso(value){
@@ -338,7 +354,7 @@ function renderMarketTable(){
   }).join("");
   const label = group==="focus" ? "重点市场" : group==="potential" ? "潜力国家" : "全部国家";
   byId("marketCount").textContent = `${label}：${countries.length} 个市场`;
-  refreshTrendOptions(countries);
+  refreshTrendOptions();
 }
 function previousRankInfo(brand,country){
   const dates = datesFor(country, 12).filter(d=>d < latestDate());
@@ -389,7 +405,7 @@ function renderMarketTable(){
   }).join("");
   const label = group==="focus" ? "重点市场" : group==="potential" ? "潜力国家" : "全部国家";
   byId("marketCount").textContent = `${label}：${countries.length} 个市场`;
-  refreshTrendOptions(countries);
+  refreshTrendOptions();
 }
 function renderAlerts(){
   const itemMap = new Map();
@@ -622,15 +638,16 @@ function drawTrend(containerId, country, brands=BRAND_ORDER, height=230){
   svg += `</svg>`;
   el.innerHTML = svg;
 }
-function refreshTrendOptions(countries){
+function refreshTrendOptions(){
   const select = byId("trendCountry");
   const existing = select.value;
+  const countries = orderedDataCountries();
   select.innerHTML = countries.map(c=>`<option value="${c}">${countryName(c)}</option>`).join("");
   select.value = countries.includes(existing) ? existing : (countries[0] || "");
   renderBigTrend();
 }
 function renderBigTrend(){
-  const c = byId("trendCountry").value || GROUPS.focus[0];
+  const c = byId("trendCountry").value || orderedDataCountries()[0] || GROUPS.focus[0];
   drawTrend("bigTrend", c, BRAND_ORDER, 230);
 }
 function marketTier(country){
