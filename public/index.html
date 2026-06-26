@@ -484,7 +484,7 @@ function rankAtDate(brand, country, date){
   return hit ? hit.rank : null;
 }
 function overtakeEventDate(brand, country){
-  const dates = datesFor(country, 45).filter(d=>d<=latestDate()).sort();
+  const dates = datesFor(country, 120).filter(d=>d<=latestDate()).sort();
   let inRun = false;
   let start = null;
   dates.forEach(d=>{
@@ -610,7 +610,7 @@ function renderUgFocus(){
 }
 function drawTrend(containerId, country, brands=BRAND_ORDER, height=230){
   const el = byId(containerId);
-  const dates = datesFor(country, 45);
+  const dates = datesFor(country, 120);
   if(!dates.length){ el.innerHTML = `<div class="empty">暂无真实趋势数据</div>`; return; }
   const series = brands.map(brand=>({brand,values:seriesFor(brand,country,dates)})).filter(s=>s.values.some(v=>v!==null));
   if(!series.length){ el.innerHTML = `<div class="empty">暂无真实趋势数据</div>`; return; }
