@@ -23,6 +23,10 @@ export default {
       return jsonResponse({ ok: true });
     }
 
+    if (request.method === 'GET' && url.pathname === '/favicon.ico') {
+      return new Response(null, { status: 204 });
+    }
+
     if (request.method === 'GET' && url.pathname === '/api/dashboard') {
       return handleDashboard(env);
     }
@@ -87,7 +91,10 @@ async function handleDashboard(env) {
     return jsonResponse(buildDashboardPayload([], []));
   }
 
-  const [rowsResult, runsResult] = await Promise.all([
+  const latestDateResult = await env.DB.prepare(`SELECT MAX(date) AS latest_date FROM ranking_rows`).first();
+  const latestDate = latestDateResult?.latest_date || '';
+
+  const [seriesResult, latestRowsResult, runsResult] = await Promise.all([
     env.DB.prepare(
       `SELECT
         date,
@@ -96,15 +103,32 @@ async function handleDashboard(env) {
         status,
         data_origin,
         revenue_rank_tools,
-        tooltip_date,
-        status_detail,
-        source_url,
-        crawl_time,
-        raw_tooltip_text,
-        screenshot_path
+        tooltip_date
        FROM ranking_rows
        ORDER BY date, brand, country`,
     ).all(),
+    latestDate
+      ? env.DB.prepare(
+          `SELECT
+            date,
+            brand,
+            country,
+            status,
+            data_origin,
+            revenue_rank_tools,
+            tooltip_date,
+            status_detail,
+            source_url,
+            crawl_time,
+            raw_tooltip_text,
+            screenshot_path
+           FROM ranking_rows
+           WHERE date = ?
+           ORDER BY date, brand, country`,
+        )
+          .bind(latestDate)
+          .all()
+      : Promise.resolve({ results: [] }),
     env.DB.prepare(
       `SELECT date, source, status, row_count, message, created_at, updated_at
        FROM update_runs
@@ -112,7 +136,17 @@ async function handleDashboard(env) {
     ).all(),
   ]);
 
-  return jsonResponse(buildDashboardPayload(rowsResult.results || [], runsResult.results || []));
+  const rows = mergeLatestDetailRows(seriesResult.results || [], latestRowsResult.results || []);
+  return jsonResponse(buildDashboardPayload(rows, runsResult.results || []));
+}
+
+function mergeLatestDetailRows(seriesRows, latestRows) {
+  if (!latestRows.length) {
+    return seriesRows;
+  }
+
+  const latestByKey = new Map(latestRows.map((row) => [`${row.date}:${row.brand}:${row.country}`, row]));
+  return seriesRows.map((row) => latestByKey.get(`${row.date}:${row.brand}:${row.country}`) || row);
 }
 
 async function handleIngest(request, env, ctx) {

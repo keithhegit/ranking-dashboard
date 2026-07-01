@@ -12,11 +12,11 @@ const DETAIL_FIELDS = [
 ];
 
 export function buildDashboardPayload(rows = [], runs = [], nowIso = new Date().toISOString()) {
-  const seriesRows = rows.map(normalizeRankingRow).sort(compareRows);
-  const latestDate = latestDateFrom(seriesRows) || latestDateFrom(runs.map(normalizeRun)) || '';
+  const normalizedRows = rows.map(normalizeRankingRow).sort(compareRows);
+  const latestDate = latestDateFrom(normalizedRows) || latestDateFrom(runs.map(normalizeRun)) || '';
   const latestByPair = new Map();
 
-  for (const row of seriesRows) {
+  for (const row of normalizedRows) {
     if (row.date === latestDate) {
       latestByPair.set(pairKey(row.brand, row.country), row);
     }
@@ -69,7 +69,17 @@ export function buildDashboardPayload(rows = [], runs = [], nowIso = new Date().
     country_names: COUNTRY_NAMES,
     market_tiers: MARKET_TIERS,
     latest_rows: latestRows,
-    series_rows: seriesRows,
+    series_rows: normalizedRows.map(slimSeriesRow),
+  };
+}
+
+function slimSeriesRow(row) {
+  return {
+    date: row.date,
+    brand: row.brand,
+    country: row.country,
+    status: row.status,
+    revenue_rank_tools: row.revenue_rank_tools,
   };
 }
 

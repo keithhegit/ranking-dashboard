@@ -87,10 +87,52 @@ test('buildDashboardPayload fills missing latest product-country pairs as pendin
 
   assert.equal(payload.series_rows.length, 3);
   assert.equal(payload.series_rows[0].revenue_rank_tools, 9);
-  assert.equal(
-    payload.series_rows.find((row) => row.date === '2026-06-15' && row.brand === 'ugphone').raw_tooltip_text,
-    'No. 2 in Tools',
+  assert.equal(payload.series_rows.find((row) => row.date === '2026-06-15' && row.brand === 'ugphone').raw_tooltip_text, undefined);
+});
+
+test('buildDashboardPayload keeps series rows lightweight while latest rows keep detail fields', () => {
+  const payload = buildDashboardPayload(
+    [
+      {
+        date: '2026-06-14',
+        brand: 'ugphone',
+        country: 'TH',
+        status: 'SUCCESS',
+        data_origin: 'archive',
+        revenue_rank_tools: '9',
+        tooltip_date: 'Jun 14, 2026',
+        status_detail: 'historical detail should stay out of series',
+        source_url: 'https://example.test/historical',
+        crawl_time: '2026-06-14T09:59:00.000Z',
+        raw_tooltip_text: 'large historical tooltip text',
+        screenshot_path: 'screenshots/history.png',
+      },
+      {
+        date: '2026-06-15',
+        brand: 'ugphone',
+        country: 'TH',
+        status: 'SUCCESS',
+        data_origin: 'sensor_tower',
+        revenue_rank_tools: '2',
+        tooltip_date: 'Jun 15, 2026',
+        status_detail: 'latest detail should stay available',
+        source_url: 'https://example.test/latest',
+        crawl_time: '2026-06-15T09:59:00.000Z',
+        raw_tooltip_text: 'latest tooltip text',
+        screenshot_path: 'screenshots/latest.png',
+      },
+    ],
+    [{ date: '2026-06-15', status: 'COMPLETED' }],
+    '2026-06-15T10:00:00.000Z',
   );
+
+  const seriesRow = payload.series_rows.find((row) => row.date === '2026-06-14' && row.brand === 'ugphone' && row.country === 'TH');
+  assert.deepEqual(Object.keys(seriesRow).sort(), ['brand', 'country', 'date', 'revenue_rank_tools', 'status']);
+
+  const latestRow = payload.latest_rows.find((row) => row.brand === 'ugphone' && row.country === 'TH');
+  assert.equal(latestRow.source_url, 'https://example.test/latest');
+  assert.equal(latestRow.raw_tooltip_text, 'latest tooltip text');
+  assert.equal(latestRow.screenshot_path, 'screenshots/latest.png');
 });
 
 test('buildDashboardPayload uses updated run timestamp for last run status', () => {
@@ -264,6 +306,12 @@ test('ingest rejects requests when INGEST_TOKEN is not configured', async () => 
   assert.equal(response.status, 503);
   assert.deepEqual(await response.json(), { error: 'INGEST_TOKEN is not configured' });
   assert.equal(db.runs.length, 0);
+});
+
+test('worker returns empty favicon response instead of a noisy 404', async () => {
+  const response = await worker.fetch(new Request('https://dashboard.test/favicon.ico'), {}, { waitUntil() {} });
+
+  assert.equal(response.status, 204);
 });
 
 test('ingest rejects requests with the wrong bearer token', async () => {
