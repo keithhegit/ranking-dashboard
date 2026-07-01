@@ -314,6 +314,92 @@ test('worker returns empty favicon response instead of a noisy 404', async () =>
   assert.equal(response.status, 204);
 });
 
+test('dashboard API requires login cookie', async () => {
+  const response = await worker.fetch(new Request('https://dashboard.test/api/dashboard'), {}, { waitUntil() {} });
+
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), { error: 'Authentication required' });
+});
+
+test('unauthenticated dashboard page renders the branded password form', async () => {
+  const response = await worker.fetch(new Request('https://dashboard.test/'), {}, { waitUntil() {} });
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /竞品排名监测看板/);
+  assert.match(html, /请输入访问密码/);
+  assert.match(html, /roblox-650-80\.jpg/);
+  assert.match(html, /type="password"/);
+});
+
+test('login rejects the wrong password', async () => {
+  const response = await worker.fetch(
+    new Request('https://dashboard.test/api/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ password: 'wrong' }),
+    }),
+    {},
+    { waitUntil() {} },
+  );
+  const html = await response.text();
+
+  assert.equal(response.status, 401);
+  assert.match(html, /密码不正确/);
+  assert.equal(response.headers.get('set-cookie'), null);
+});
+
+test('login accepts the configured password and allows dashboard API access', async () => {
+  const loginResponse = await worker.fetch(
+    new Request('https://dashboard.test/api/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ password: 'makeuggreatagain' }),
+    }),
+    {},
+    { waitUntil() {} },
+  );
+  const cookie = loginResponse.headers.get('set-cookie');
+
+  assert.equal(loginResponse.status, 303);
+  assert.match(loginResponse.headers.get('location'), /^\//);
+  assert.match(cookie, /ug_dashboard_auth=/);
+  assert.match(cookie, /HttpOnly/);
+  assert.match(cookie, /Secure/);
+
+  const dashboardResponse = await worker.fetch(
+    new Request('https://dashboard.test/api/dashboard', {
+      headers: { cookie },
+    }),
+    {},
+    { waitUntil() {} },
+  );
+
+  assert.equal(dashboardResponse.status, 200);
+  assert.equal((await dashboardResponse.json()).latest_monitor_file_date, '');
+});
+
+test('authenticated page requests are served from static assets', async () => {
+  const loginResponse = await worker.fetch(
+    new Request('https://dashboard.test/api/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ password: 'makeuggreatagain' }),
+    }),
+    {},
+    { waitUntil() {} },
+  );
+  const cookie = loginResponse.headers.get('set-cookie');
+  const assets = {
+    fetch: async () => new Response('<!doctype html><title>asset dashboard</title>', { headers: { 'content-type': 'text/html' } }),
+  };
+
+  const response = await worker.fetch(new Request('https://dashboard.test/', { headers: { cookie } }), { ASSETS: assets }, { waitUntil() {} });
+
+  assert.equal(response.status, 200);
+  assert.match(await response.text(), /asset dashboard/);
+});
+
 test('ingest rejects requests with the wrong bearer token', async () => {
   const db = new FakeDb();
   const response = await worker.fetch(ingestRequest('wrong-token'), { DB: db, INGEST_TOKEN: 'secret' }, { waitUntil() {} });
